@@ -63,6 +63,69 @@ input:focus{outline:none;border-color:var(--accent)}
 <div id="stats-tab" style="display:none"></div>
 
 <script>
+// --- Sound Effects (Web Audio API, no external files) ---
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); return audioCtx; }
+
+function playLetterSound() {
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(220, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(110, ctx.currentTime + 0.25);
+  gain.gain.setValueAtTime(0.35, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+}
+
+function playGameOverSound() {
+  const ctx = ensureAudio();
+  [0, 0.15, 0.3].forEach((t, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime([200, 160, 120][i], ctx.currentTime + t);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime + t);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.18);
+    osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + 0.2);
+  });
+}
+
+function playWinSound() {
+  const ctx = ensureAudio();
+  [0, 0.12, 0.24, 0.36].forEach((t, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime([523, 659, 784, 1047][i], ctx.currentTime + t);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime + t);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.15);
+    osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + 0.18);
+  });
+}
+
+function playUndoSound() {
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(330, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(440, ctx.currentTime + 0.12);
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15);
+}
+
+// --- Haptics (Vibration API) ---
+function vibrateShort() { if (navigator.vibrate) navigator.vibrate(50); }
+function vibrateLong()  { if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]); }
+
 const WORD = 'SKATE';
 let state = JSON.parse(localStorage.getItem('skate-state') || 'null');
 let history = JSON.parse(localStorage.getItem('skate-history') || '[]');
@@ -218,6 +281,15 @@ function logTrick(name) {
 function giveLetter(idx) {
   if (state.players[idx].letters < 5) {
     state.players[idx].letters++;
+    const isOut = state.players[idx].letters >= 5;
+    const alive = state.players.filter(p => p.letters < 5);
+    if (alive.length <= 1) {
+      playWinSound(); vibrateLong();
+    } else if (isOut) {
+      playGameOverSound(); vibrateLong();
+    } else {
+      playLetterSound(); vibrateShort();
+    }
     save(); renderGame();
   }
 }
@@ -225,6 +297,7 @@ function giveLetter(idx) {
 function undoLetter(idx) {
   if (state.players[idx].letters > 0) {
     state.players[idx].letters--;
+    playUndoSound();
     save(); renderGame();
   }
 }
