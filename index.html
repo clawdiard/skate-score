@@ -48,6 +48,19 @@ input:focus{outline:none;border-color:var(--accent)}
 .tab.active{background:var(--accent);color:#000}
 .flex-center{display:flex;gap:8px;justify-content:center;margin-top:12px}
 .empty{text-align:center;color:var(--muted);padding:30px;font-size:.9rem}
+.bracket{overflow-x:auto;padding:16px 0}
+.bracket-round{display:inline-flex;flex-direction:column;justify-content:center;vertical-align:top;min-width:160px;margin-right:8px}
+.bracket-round-title{text-align:center;font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px;text-transform:uppercase}
+.bracket-match{background:var(--card);border-radius:8px;margin-bottom:12px;overflow:hidden;border:1px solid #222}
+.bracket-slot{padding:8px 10px;font-size:.85rem;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .15s}
+.bracket-slot:first-child{border-bottom:1px solid #222}
+.bracket-slot:hover{background:#1e1e1e}
+.bracket-slot.winner{color:var(--green);font-weight:700}
+.bracket-slot.loser{color:var(--muted);text-decoration:line-through}
+.bracket-slot .seed{color:var(--muted);font-size:.7rem;margin-right:6px}
+.bracket-connector{width:8px;display:inline-flex;flex-direction:column;justify-content:center;vertical-align:top}
+.tourney-status{text-align:center;font-size:.85rem;color:var(--muted);margin:8px 0}
+.tourney-champion{text-align:center;font-size:1.4rem;font-weight:800;color:var(--green);padding:16px}
 </style>
 </head>
 <body>
@@ -59,11 +72,13 @@ input:focus{outline:none;border-color:var(--accent)}
   <div class="tab active" data-tab="game" onclick="switchTab('game')">Game</div>
   <div class="tab" data-tab="history" onclick="switchTab('history')">History</div>
   <div class="tab" data-tab="stats" onclick="switchTab('stats')">Stats</div>
+  <div class="tab" data-tab="tournament" onclick="switchTab('tournament')">🏆</div>
 </div>
 
 <div id="game-tab"></div>
 <div id="history-tab" style="display:none"></div>
 <div id="stats-tab" style="display:none"></div>
+<div id="tournament-tab" style="display:none"></div>
 
 <script>
 // --- Sound Effects (Web Audio API, no external files) ---
@@ -140,12 +155,13 @@ function save() {
 
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  ['game','history','stats'].forEach(t => {
+  ['game','history','stats','tournament'].forEach(t => {
     document.getElementById(t+'-tab').style.display = t === tab ? 'block' : 'none';
   });
   if (tab === 'game') renderGame();
   if (tab === 'history') renderHistory();
   if (tab === 'stats') renderStats();
+  if (tab === 'tournament') renderTournament();
 }
 
 function renderLetters(count) {
@@ -371,6 +387,156 @@ function renderStats() {
         Unique players: ${sorted.length}
       </div>
     </div>`;
+}
+
+// --- Tournament Bracket Mode ---
+let tournament = JSON.parse(localStorage.getItem('skate-tournament') || 'null');
+function saveTourney() { localStorage.setItem('skate-tournament', JSON.stringify(tournament)); }
+
+function createBracket(names) {
+  let size = 1;
+  while (size < names.length) size *= 2;
+  const seeded = names.map((n, i) => ({ name: n, seed: i + 1 }));
+  while (seeded.length < size) seeded.push(null);
+  const rounds = Math.log2(size);
+  const bracket = [];
+  function seedOrder(n) {
+    if (n === 1) return [0];
+    const prev = seedOrder(n / 2);
+    return prev.reduce((a, v) => [...a, v, n - 1 - v], []);
+  }
+  const order = seedOrder(size);
+  const firstRound = [];
+  for (let i = 0; i < size; i += 2) {
+    firstRound.push({ p1: seeded[order[i]] || null, p2: seeded[order[i + 1]] || null, winner: null });
+  }
+  firstRound.forEach(m => {
+    if (m.p1 && !m.p2) m.winner = m.p1.name;
+    else if (!m.p1 && m.p2) m.winner = m.p2.name;
+  });
+  bracket.push(firstRound);
+  for (let r = 1; r < rounds; r++) {
+    const prev = bracket[r - 1];
+    const round = [];
+    for (let i = 0; i < prev.length; i += 2) round.push({ p1: null, p2: null, winner: null });
+    bracket.push(round);
+  }
+  propagateBracket(bracket);
+  return bracket;
+}
+
+function propagateBracket(bracket) {
+  for (let r = 0; r < bracket.length - 1; r++) {
+    for (let m = 0; m < bracket[r].length; m += 2) {
+      const next = bracket[r + 1][Math.floor(m / 2)];
+      const m1 = bracket[r][m], m2 = bracket[r][m + 1];
+      if (m1 && m1.winner) next.p1 = { name: m1.winner, seed: (m1.p1 && m1.p1.name === m1.winner) ? m1.p1.seed : (m1.p2 ? m1.p2.seed : null) };
+      if (m2 && m2.winner) next.p2 = { name: m2.winner, seed: (m2.p1 && m2.p1.name === m2.winner) ? m2.p1.seed : (m2.p2 ? m2.p2.seed : null) };
+      if (next.p1 && !next.p2 && m2 && m2.winner !== null) next.winner = next.p1.name;
+      else if (!next.p1 && next.p2 && m1 && m1.winner !== null) next.winner = next.p2.name;
+    }
+  }
+}
+
+function setMatchWinner(ri, mi, name) {
+  tournament.bracket[ri][mi].winner = name;
+  propagateBracket(tournament.bracket);
+  const finalMatch = tournament.bracket[tournament.bracket.length - 1][0];
+  if (finalMatch.winner) { playWinSound(); vibrateLong(); }
+  else { playLetterSound(); vibrateShort(); }
+  saveTourney(); renderTournament();
+}
+
+function getRoundName(ri, total) {
+  const rem = total - ri;
+  if (rem === 1) return 'Final';
+  if (rem === 2) return 'Semis';
+  if (rem === 3) return 'Quarters';
+  return 'Round ' + (ri + 1);
+}
+
+function renderTournament() {
+  const el = document.getElementById('tournament-tab');
+  if (!tournament) {
+    el.innerHTML = `
+      <div class="card">
+        <h3 style="margin-bottom:12px">🏆 New Tournament</h3>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Single-elimination bracket. 3–16 players.</p>
+        <div class="setup-players" id="tourney-inputs">
+          <div class="player-input-row"><input placeholder="Player 1" value="Player 1"><button class="danger sm" onclick="removeTourneyInput(this)" style="display:none">✕</button></div>
+          <div class="player-input-row"><input placeholder="Player 2" value="Player 2"><button class="danger sm" onclick="removeTourneyInput(this)" style="display:none">✕</button></div>
+          <div class="player-input-row"><input placeholder="Player 3" value="Player 3"><button class="danger sm" onclick="removeTourneyInput(this)" style="display:none">✕</button></div>
+        </div>
+        <div class="flex-center">
+          <button class="ghost" onclick="addTourneyInput()">+ Add Player</button>
+        </div>
+        <div style="margin-top:12px">
+          <label style="font-size:.85rem;color:var(--muted)"><input type="checkbox" id="tourney-shuffle"> Randomize seeding</label>
+        </div>
+        <div class="flex-center" style="margin-top:16px">
+          <button onclick="startTournament()">Start Tournament 🏆</button>
+        </div>
+      </div>`;
+    updateTourneyBtns();
+    return;
+  }
+  const finalMatch = tournament.bracket[tournament.bracket.length - 1][0];
+  const champ = finalMatch.winner;
+  let html = '';
+  if (champ) {
+    html += `<div class="card"><div class="tourney-champion">🏆 ${champ} wins the tournament!</div>
+      <div class="tourney-status">${tournament.players.length} players • ${tournament.bracket.length} rounds</div>
+      <div class="flex-center"><button onclick="tournament=null;saveTourney();renderTournament()">New Tournament</button></div></div>`;
+  } else {
+    let cr = 0;
+    for (let r = 0; r < tournament.bracket.length; r++) { if (tournament.bracket[r].some(m => !m.winner && m.p1 && m.p2)) { cr = r; break; } }
+    html += `<div class="tourney-status">${getRoundName(cr, tournament.bracket.length)} in progress</div>`;
+  }
+  html += '<div class="bracket">';
+  tournament.bracket.forEach((round, ri) => {
+    html += `<div class="bracket-round"><div class="bracket-round-title">${getRoundName(ri, tournament.bracket.length)}</div>`;
+    round.forEach((match, mi) => {
+      const canPick = match.p1 && match.p2 && !match.winner && !champ;
+      html += '<div class="bracket-match">';
+      [match.p1, match.p2].forEach(p => {
+        const isW = match.winner && p && p.name === match.winner;
+        const isL = match.winner && p && p.name !== match.winner;
+        const cls = isW ? 'winner' : isL ? 'loser' : '';
+        const click = canPick && p ? `onclick="setMatchWinner(${ri},${mi},'${p.name.replace(/'/g,"\\'")}')"` : '';
+        html += `<div class="bracket-slot ${cls}" ${click}><span>${p ? '<span class="seed">#' + p.seed + '</span>' + p.name : '<span style="color:#333">TBD</span>'}</span>${isW ? '<span>✓</span>' : ''}</div>`;
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  if (!champ) html += `<div class="flex-center"><button class="danger sm" onclick="if(confirm('Cancel tournament?')){tournament=null;saveTourney();renderTournament()}">Cancel</button></div>`;
+  el.innerHTML = html;
+}
+
+function addTourneyInput() {
+  const c = document.getElementById('tourney-inputs');
+  if (c.children.length >= 16) return;
+  const n = c.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'player-input-row';
+  row.innerHTML = `<input placeholder="Player ${n}" value="Player ${n}"><button class="danger sm" onclick="removeTourneyInput(this)">✕</button>`;
+  c.appendChild(row);
+  updateTourneyBtns();
+}
+function removeTourneyInput(btn) { btn.parentElement.remove(); updateTourneyBtns(); }
+function updateTourneyBtns() {
+  const rows = document.querySelectorAll('#tourney-inputs .player-input-row');
+  rows.forEach(r => r.querySelector('button').style.display = rows.length > 3 ? '' : 'none');
+}
+function startTournament() {
+  const inputs = document.querySelectorAll('#tourney-inputs input:not([type="checkbox"])');
+  let names = [...inputs].map(i => i.value.trim()).filter(Boolean);
+  if (names.length < 3) return alert('Need at least 3 players');
+  if (names.length > 16) return alert('Max 16 players');
+  if (document.getElementById('tourney-shuffle').checked) names.sort(() => Math.random() - 0.5);
+  tournament = { players: names, bracket: createBracket(names), date: new Date().toISOString() };
+  saveTourney(); renderTournament();
 }
 
 renderGame();
