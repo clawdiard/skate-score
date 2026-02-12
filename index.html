@@ -135,7 +135,7 @@ function renderGame() {
         </div>
       </div>`;
     if (!state.saved) {
-      history.unshift({ date: new Date().toISOString(), players: state.players.map(p=>({...p})), rounds: state.round, winner: winner.name });
+      history.unshift({ date: new Date().toISOString(), players: state.players.map(p=>({...p})), rounds: state.round, winner: winner.name, tricks: (state.tricks||[]).filter(t=>t.name) });
       state.saved = true;
       save();
     }
@@ -143,8 +143,15 @@ function renderGame() {
   }
 
   const setter = alive[state.currentSetter % alive.length];
+  const currentTrick = (state.tricks || []).find(t => t.round === state.round);
   el.innerHTML = `
     <div class="round-info">Round ${state.round} — ${setter.name} sets the trick</div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="trick-input" placeholder="Trick name (e.g. Kickflip)" value="${currentTrick ? currentTrick.name : ''}" style="flex:1" oninput="logTrick(this.value)">
+      </div>
+      ${(state.tricks||[]).length > 0 ? `<div style="margin-top:8px;font-size:.75rem;color:var(--muted)">Recent: ${(state.tricks||[]).slice(-3).map(t=>'R'+t.round+' '+t.name).join(' → ')}</div>` : ''}
+    </div>
     ${state.players.map((p, i) => {
       const isOut = p.letters >= 5;
       return `
@@ -195,8 +202,17 @@ function startGame() {
   const inputs = document.querySelectorAll('#player-inputs input');
   const names = [...inputs].map(i => i.value.trim()).filter(Boolean);
   if (names.length < 2) return alert('Need at least 2 players');
-  state = { players: names.map(n => ({ name: n, letters: 0 })), round: 1, currentSetter: 0, saved: false };
+  state = { players: names.map(n => ({ name: n, letters: 0 })), round: 1, currentSetter: 0, saved: false, tricks: [] };
   save(); renderGame();
+}
+
+function logTrick(name) {
+  if (!state || !state.tricks) state.tricks = [];
+  const existing = state.tricks.find(t => t.round === state.round);
+  const setter = state.players.filter(p => p.letters < 5)[state.currentSetter % state.players.filter(p => p.letters < 5).length];
+  if (existing) { existing.name = name; existing.setter = setter.name; }
+  else state.tricks.push({ round: state.round, name: name, setter: setter.name });
+  save();
 }
 
 function giveLetter(idx) {
@@ -234,6 +250,7 @@ function renderHistory() {
         <span class="history-date">${new Date(h.date).toLocaleDateString()}</span>
       </div>
       <div style="font-size:.85rem;color:var(--muted)">${h.rounds} rounds • ${h.players.length} players</div>
+      ${(h.tricks||[]).length ? `<div style="margin:8px 0;font-size:.8rem"><strong style="color:var(--accent)">Tricks:</strong> ${h.tricks.map(t=>`<span style="color:var(--muted)">${t.name}${t.setter?' ('+t.setter+')':''}</span>`).join(' → ')}</div>` : ''}
       ${h.players.map(p => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:.85rem">
           <span>${p.name}</span>
