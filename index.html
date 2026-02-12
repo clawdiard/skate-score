@@ -127,6 +127,143 @@ function playWinSound() {
   });
 }
 
+// --- Share / Export Game Results ---
+function generateShareCanvas(data) {
+  // data: { winner, players: [{name, letters}], rounds, date, tricks }
+  const W = 600, rowH = 44, pad = 24;
+  const headerH = 130, trickH = data.tricks && data.tricks.length ? 36 : 0;
+  const H = headerH + data.players.length * rowH + trickH + pad * 2 + 40;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#161616';
+  const rx = 16, ry = 16;
+  const bx = pad, by = pad, bw = W - pad * 2, bh = H - pad * 2;
+  ctx.beginPath();
+  ctx.moveTo(bx + rx, by);
+  ctx.lineTo(bx + bw - rx, by); ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + ry);
+  ctx.lineTo(bx + bw, by + bh - ry); ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - rx, by + bh);
+  ctx.lineTo(bx + rx, by + bh); ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - ry);
+  ctx.lineTo(bx, by + ry); ctx.quadraticCurveTo(bx, by, bx + rx, by);
+  ctx.closePath(); ctx.fill();
+
+  let y = pad + 28;
+
+  // Title
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🛹 SKATE Score', W / 2, y); y += 34;
+
+  // Winner
+  ctx.fillStyle = '#22c55e';
+  ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillText('🏆 ' + data.winner + ' Wins!', W / 2, y); y += 24;
+
+  // Meta
+  ctx.fillStyle = '#737373';
+  ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+  const meta = data.rounds + ' rounds • ' + data.players.length + ' players' + (data.date ? ' • ' + new Date(data.date).toLocaleDateString() : '');
+  ctx.fillText(meta, W / 2, y); y += 28;
+
+  // Players
+  ctx.textAlign = 'left';
+  const WORD = 'SKATE';
+  data.players.forEach(p => {
+    ctx.fillStyle = '#e5e5e5';
+    ctx.font = '600 16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(p.name, pad + 20, y);
+    // Letters on the right
+    const letterStartX = W - pad - 20 - 5 * 30;
+    WORD.split('').forEach((l, i) => {
+      const lx = letterStartX + i * 30, ly = y - 14;
+      ctx.fillStyle = i < p.letters ? '#ef4444' : '#222';
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(lx, ly, 26, 26, 6) : ctx.rect(lx, ly, 26, 26);
+      ctx.fill();
+      ctx.fillStyle = i < p.letters ? '#fff' : '#555';
+      ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(l, lx + 13, ly + 18);
+      ctx.textAlign = 'left';
+    });
+    y += rowH;
+  });
+
+  // Tricks
+  if (data.tricks && data.tricks.length) {
+    y += 8;
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    const trickStr = data.tricks.map(t => t.name).filter(Boolean).join(' → ');
+    if (trickStr) ctx.fillText('Tricks: ' + (trickStr.length > 60 ? trickStr.slice(0, 57) + '…' : trickStr), W / 2, y);
+  }
+
+  // Footer
+  ctx.fillStyle = '#333';
+  ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('clawdiard.github.io/skate-score', W / 2, H - pad + 4);
+
+  return c;
+}
+
+async function shareResults(data) {
+  const canvas = generateShareCanvas(data);
+  try {
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    const file = new File([blob], 'skate-score.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        text: '🛹 ' + data.winner + ' wins at SKATE! ' + data.rounds + ' rounds',
+        files: [file]
+      });
+      return;
+    }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  // Fallback: download
+  const link = document.createElement('a');
+  link.download = 'skate-score-' + Date.now() + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function shareCurrentGame() {
+  if (!state) return;
+  const alive = state.players.filter(p => p.letters < 5);
+  const winner = alive[0] || state.players[0];
+  shareResults({ winner: winner.name, players: state.players, rounds: state.round, date: new Date().toISOString(), tricks: state.tricks || [] });
+}
+
+function shareFromHistory(idx) {
+  const h = history[idx];
+  if (!h) return;
+  shareResults({ winner: h.winner, players: h.players, rounds: h.rounds, date: h.date, tricks: h.tricks || [] });
+}
+
+function copyResultsText(data) {
+  const lines = ['🛹 SKATE Score Results', '🏆 ' + data.winner + ' Wins!', data.rounds + ' rounds • ' + data.players.length + ' players', ''];
+  data.players.forEach(p => {
+    const letters = 'SKATE'.slice(0, p.letters) || '—';
+    lines.push(p.name + ': ' + (p.letters >= 5 ? 'SKATE (out)' : letters));
+  });
+  if (data.tricks && data.tricks.length) {
+    const ts = data.tricks.map(t => t.name).filter(Boolean).join(' → ');
+    if (ts) lines.push('', 'Tricks: ' + ts);
+  }
+  lines.push('', 'clawdiard.github.io/skate-score');
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
 function playUndoSound() {
   const ctx = ensureAudio();
   const osc = ctx.createOscillator();
@@ -168,6 +305,15 @@ function renderLetters(count) {
   return WORD.split('').map((l, i) =>
     `<div class="letter ${i < count ? 'active' : ''}">${l}</div>`
   ).join('');
+}
+
+function shareTournament() {
+  if (!tournament) return;
+  const finalMatch = tournament.bracket[tournament.bracket.length - 1][0];
+  if (!finalMatch.winner) return;
+  // Build pseudo player list from bracket results
+  const players = tournament.players.map(n => ({ name: n, letters: n === finalMatch.winner ? 0 : 5 }));
+  shareResults({ winner: finalMatch.winner, players, rounds: tournament.bracket.length, date: tournament.date, tricks: [] });
 }
 
 function renderGame() {
@@ -213,6 +359,8 @@ function renderGame() {
             <div class="letters">${renderLetters(p.letters)}</div>
           </div>`).join('')}
         <div class="flex-center" style="margin-top:16px">
+          <button onclick="shareCurrentGame()">📤 Share</button>
+          <button class="ghost" onclick="copyResultsText({winner:'${winner.name}',players:state.players,rounds:state.round,tricks:state.tricks||[]})">📋 Copy</button>
           <button onclick="endGame()">New Game</button>
         </div>
       </div>`;
@@ -335,7 +483,7 @@ function endGame() {
 function renderHistory() {
   const el = document.getElementById('history-tab');
   if (!history.length) { el.innerHTML = '<div class="empty">No games played yet</div>'; return; }
-  el.innerHTML = history.map(h => `
+  el.innerHTML = history.map((h, idx) => `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <strong>🏆 ${h.winner}</strong>
@@ -348,6 +496,10 @@ function renderHistory() {
           <span>${p.name}</span>
           <div class="letters">${renderLetters(p.letters)}</div>
         </div>`).join('')}
+      <div class="flex-center" style="margin-top:8px">
+        <button class="sm" onclick="shareFromHistory(${idx})">📤 Share</button>
+        <button class="ghost sm" onclick="copyResultsText(history[${idx}])">📋 Copy</button>
+      </div>
     </div>`).join('');
 }
 
@@ -486,7 +638,7 @@ function renderTournament() {
   if (champ) {
     html += `<div class="card"><div class="tourney-champion">🏆 ${champ} wins the tournament!</div>
       <div class="tourney-status">${tournament.players.length} players • ${tournament.bracket.length} rounds</div>
-      <div class="flex-center"><button onclick="tournament=null;saveTourney();renderTournament()">New Tournament</button></div></div>`;
+      <div class="flex-center"><button class="sm" onclick="shareTournament()">📤 Share</button><button onclick="tournament=null;saveTourney();renderTournament()">New Tournament</button></div></div>`;
   } else {
     let cr = 0;
     for (let r = 0; r < tournament.bracket.length; r++) { if (tournament.bracket[r].some(m => !m.winner && m.p1 && m.p2)) { cr = r; break; } }
