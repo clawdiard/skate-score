@@ -6,6 +6,9 @@
 <title>SKATE Score — Digital Game of SKATE Scorekeeper</title>
 <meta name="description" content="Free digital scorekeeper for Game of SKATE. Track players, letters, rounds, and match history — all in your browser.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛹</text></svg>">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f59e0b">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0a0a;--card:#161616;--accent:#f59e0b;--accent2:#ef4444;--text:#e5e5e5;--muted:#737373;--green:#22c55e;--radius:12px}
@@ -371,6 +374,11 @@ function renderStats() {
 }
 
 renderGame();
+
+// Register service worker for PWA / offline support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
