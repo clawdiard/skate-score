@@ -537,7 +537,7 @@ function renderStats() {
         <div class="player-row">
           <div>
             <div class="player-name">${name}</div>
-            <div style="font-size:.8rem;color:var(--muted)">${s.games} games • ${(s.totalLetters/s.games).toFixed(1)} avg letters</div>
+            <div style="font-size:.8rem;color:var(--muted)">${s.games} ${s.games === 1 ? "game" : "games"} • ${(s.totalLetters/s.games).toFixed(1)} avg letters</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:1.1rem;font-weight:700;color:var(--green)">${s.wins}W</div>
