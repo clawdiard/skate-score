@@ -476,6 +476,20 @@ function nextRound() {
 }
 
 function endGame() {
+  if (state && state.players && state.players.length) {
+    const sorted = [...state.players].sort((a, b) => a.letters - b.letters);
+    const winner = sorted[0];
+    if (!state.saved) {
+      history.unshift({
+        date: new Date().toISOString(),
+        players: state.players.map(p => ({...p})),
+        rounds: state.round || 1,
+        winner: winner.name,
+        tricks: (state.tricks || []).filter(t => t.name)
+      });
+      save();
+    }
+  }
   state = null;
   save(); renderGame();
 }
