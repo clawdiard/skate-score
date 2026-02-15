@@ -166,7 +166,7 @@ function generateShareCanvas(data) {
   // Meta
   ctx.fillStyle = '#737373';
   ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
-  const meta = data.rounds + ' rounds • ' + data.players.length + ' players' + (data.date ? ' • ' + new Date(data.date).toLocaleDateString() : '');
+  const meta = data.rounds + (data.rounds === 1 ? ' round' : ' rounds') + ' • ' + data.players.length + ' players' + (data.date ? ' • ' + new Date(data.date).toLocaleDateString() : '');
   ctx.fillText(meta, W / 2, y); y += 28;
 
   // Players
@@ -219,7 +219,7 @@ async function shareResults(data) {
     const file = new File([blob], 'skate-score.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
-        text: '🛹 ' + data.winner + ' wins at SKATE! ' + data.rounds + ' rounds',
+        text: '🛹 ' + data.winner + ' wins at SKATE! ' + data.rounds + (data.rounds === 1 ? ' round' : ' rounds'),
         files: [file]
       });
       return;
@@ -246,7 +246,7 @@ function shareFromHistory(idx) {
 }
 
 function copyResultsText(data) {
-  const lines = ['🛹 SKATE Score Results', '🏆 ' + data.winner + ' Wins!', data.rounds + ' rounds • ' + data.players.length + ' players', ''];
+  const lines = ['🛹 SKATE Score Results', '🏆 ' + data.winner + ' Wins!', data.rounds + (data.rounds === 1 ? ' round' : ' rounds') + ' • ' + data.players.length + ' players', ''];
   data.players.forEach(p => {
     const letters = 'SKATE'.slice(0, p.letters) || '—';
     lines.push(p.name + ': ' + (p.letters >= 5 ? 'SKATE (out)' : letters));
@@ -503,7 +503,7 @@ function renderHistory() {
         <strong>🏆 ${h.winner}</strong>
         <span class="history-date">${new Date(h.date).toLocaleDateString()}</span>
       </div>
-      <div style="font-size:.85rem;color:var(--muted)">${h.rounds} rounds • ${h.players.length} players</div>
+      <div style="font-size:.85rem;color:var(--muted)">${h.rounds} ${h.rounds === 1 ? 'round' : 'rounds'} • ${h.players.length} players</div>
       ${(h.tricks||[]).length ? `<div style="margin:8px 0;font-size:.8rem"><strong style="color:var(--accent)">Tricks:</strong> ${h.tricks.map(t=>`<span style="color:var(--muted)">${t.name}${t.setter?' ('+t.setter+')':''}</span>`).join(' → ')}</div>` : ''}
       ${h.players.map(p => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:.85rem">
