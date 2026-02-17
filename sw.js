@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skate-score-v1';
+const CACHE_NAME = 'skate-score-v2';
 const ASSETS = [
   './',
   './index.html',
