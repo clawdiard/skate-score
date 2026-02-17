@@ -402,7 +402,7 @@ function renderGame() {
     }).join('')}
     <div class="flex-center">
       <button class="ghost" onclick="nextRound()">Next Round →</button>
-      <button class="danger sm" onclick="if(confirm('End this game?'))endGame()">End Game</button>
+      <button class="danger sm" id="end-game-btn" onclick="confirmEndGame(this)">End Game</button>
     </div>`;
 }
 
@@ -473,6 +473,22 @@ function nextRound() {
   state.round++;
   state.currentSetter++;
   save(); renderGame();
+}
+
+let _endConfirmTimer = null;
+function confirmEndGame(btn) {
+  if (btn.dataset.confirming === 'true') {
+    clearTimeout(_endConfirmTimer);
+    btn.dataset.confirming = 'false';
+    endGame();
+    return;
+  }
+  btn.dataset.confirming = 'true';
+  btn.textContent = 'Tap again to confirm';
+  _endConfirmTimer = setTimeout(() => {
+    btn.dataset.confirming = 'false';
+    btn.textContent = 'End Game';
+  }, 3000);
 }
 
 function endGame() {
