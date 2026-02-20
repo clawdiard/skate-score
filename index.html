@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SKATE Score — Digital Game of SKATE Scorekeeper</title>
 <meta name="description" content="Free digital scorekeeper for Game of SKATE. Track players, letters, rounds, and match history — all in your browser.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛹</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='4' y='8' width='16' height='3' rx='1.5' fill='%23e2e8f0'/><circle cx='7.5' cy='14' r='2' fill='%23e2e8f0'/><circle cx='16.5' cy='14' r='2' fill='%23e2e8f0'/></svg>">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f59e0b">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -65,7 +65,7 @@ input:focus{outline:none;border-color:var(--accent)}
 </head>
 <body>
 
-<h1>🛹 SKATE Score</h1>
+<h1><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1em" height="1em" style="vertical-align:-0.1em;display:inline-block"><rect x="4" y="8" width="16" height="3" rx="1.5" fill="currentColor"/><circle cx="7.5" cy="14" r="2" fill="currentColor"/><circle cx="16.5" cy="14" r="2" fill="currentColor"/></svg> SKATE Score</h1>
 <p class="subtitle">Digital Game of SKATE Scorekeeper</p>
 
 <div class="tab-bar">
@@ -162,7 +162,7 @@ function generateShareCanvas(data) {
   ctx.fillStyle = '#f59e0b';
   ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('🛹 SKATE Score', W / 2, y); y += 34;
+  ctx.fillText('⬥ SKATE Score', W / 2, y); y += 34;
 
   // Winner
   ctx.fillStyle = '#22c55e';
@@ -225,7 +225,7 @@ async function shareResults(data) {
     const file = new File([blob], 'skate-score.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
-        text: '🛹 ' + data.winner + ' wins at SKATE! ' + data.rounds + (data.rounds === 1 ? ' round' : ' rounds'),
+        text: '\u2b25 ' + data.winner + ' wins at SKATE! ' + data.rounds + (data.rounds === 1 ? ' round' : ' rounds'),
         files: [file]
       });
       return;
@@ -252,7 +252,7 @@ function shareFromHistory(idx) {
 }
 
 function copyResultsText(data) {
-  const lines = ['🛹 SKATE Score Results', '🏆 ' + data.winner + ' Wins!', data.rounds + (data.rounds === 1 ? ' round' : ' rounds') + ' • ' + data.players.length + ' players', ''];
+  const lines = ['SKATE Score Results', '🏆 ' + data.winner + ' Wins!', data.rounds + (data.rounds === 1 ? ' round' : ' rounds') + ' • ' + data.players.length + ' players', ''];
   data.players.forEach(p => {
     const letters = 'SKATE'.slice(0, p.letters) || '—';
     lines.push(p.name + ': ' + (p.letters >= 5 ? 'SKATE (out)' : letters));
@@ -336,7 +336,7 @@ function renderGame() {
           <button class="ghost" onclick="addPlayerInput()">+ Add Player</button>
         </div>
         <div class="flex-center" style="margin-top:16px">
-          <button onclick="startGame()">Start Game 🛹</button>
+          <button onclick="startGame()">Start Game ▶</button>
         </div>
       </div>
       <div class="card">
