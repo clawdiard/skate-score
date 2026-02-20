@@ -251,7 +251,7 @@ function shareFromHistory(idx) {
   shareResults({ winner: h.winner, players: h.players, rounds: h.rounds, date: h.date, tricks: h.tricks || [] });
 }
 
-function copyResultsText(data) {
+function copyResultsText(data, btnEl) {
   const lines = ['SKATE Score Results', '🏆 ' + data.winner + ' Wins!', data.rounds + (data.rounds === 1 ? ' round' : ' rounds') + ' • ' + data.players.length + ' players', ''];
   data.players.forEach(p => {
     const letters = 'SKATE'.slice(0, p.letters) || '—';
@@ -263,7 +263,7 @@ function copyResultsText(data) {
   }
   lines.push('', 'clawdiard.github.io/skate-score');
   navigator.clipboard.writeText(lines.join('\n')).then(() => {
-    const btn = event.target;
+    const btn = btnEl;
     const orig = btn.textContent;
     btn.textContent = 'Copied!';
     setTimeout(() => btn.textContent = orig, 1500);
@@ -366,7 +366,7 @@ function renderGame() {
           </div>`).join('')}
         <div class="flex-center" style="margin-top:16px">
           <button onclick="shareCurrentGame()">📤 Share</button>
-          <button class="ghost" onclick="copyResultsText({winner:escapeHtml(winner.name),players:state.players,rounds:state.round,tricks:state.tricks||[]})">📋 Copy</button>
+          <button class="ghost" onclick="copyResultsText({winner:escapeHtml(winner.name),players:state.players,rounds:state.round,tricks:state.tricks||[]}, this)">📋 Copy</button>
           <button onclick="endGame()">New Game</button>
         </div>
       </div>`;
@@ -534,7 +534,7 @@ function renderHistory() {
         </div>`).join('')}
       <div class="flex-center" style="margin-top:8px">
         <button class="sm" onclick="shareFromHistory(${idx})">📤 Share</button>
-        <button class="ghost sm" onclick="copyResultsText(history[${idx}])">📋 Copy</button>
+        <button class="ghost sm" onclick="copyResultsText(history[${idx}], this)">📋 Copy</button>
       </div>
     </div>`).join('');
 }
