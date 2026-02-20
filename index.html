@@ -81,6 +81,12 @@ input:focus{outline:none;border-color:var(--accent)}
 <div id="tournament-tab" style="display:none"></div>
 
 <script>
+// --- HTML Escaping Utility ---
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // --- Sound Effects (Web Audio API, no external files) ---
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
@@ -349,18 +355,18 @@ function renderGame() {
     const winner = alive[0] || state.players[0];
     el.innerHTML = `
       <div class="card">
-        <div class="winner-banner">🏆 ${winner.name} Wins!</div>
+        <div class="winner-banner">🏆 ${escapeHtml(winner.name)} Wins!</div>
         <div style="text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:12px">
           Round ${state.round} • ${state.players.length} players
         </div>
         ${state.players.map(p => `
           <div class="player-row">
-            <span class="player-name">${p.name}</span>
+            <span class="player-name">${escapeHtml(p.name)}</span>
             <div class="letters">${renderLetters(p.letters)}</div>
           </div>`).join('')}
         <div class="flex-center" style="margin-top:16px">
           <button onclick="shareCurrentGame()">📤 Share</button>
-          <button class="ghost" onclick="copyResultsText({winner:'${winner.name}',players:state.players,rounds:state.round,tricks:state.tricks||[]})">📋 Copy</button>
+          <button class="ghost" onclick="copyResultsText({winner:escapeHtml(winner.name),players:state.players,rounds:state.round,tricks:state.tricks||[]})">📋 Copy</button>
           <button onclick="endGame()">New Game</button>
         </div>
       </div>`;
@@ -375,12 +381,12 @@ function renderGame() {
   const setter = alive[state.currentSetter % alive.length];
   const currentTrick = (state.tricks || []).find(t => t.round === state.round);
   el.innerHTML = `
-    <div class="round-info">Round ${state.round} — ${setter.name} sets the trick</div>
+    <div class="round-info">Round ${state.round} — ${escapeHtml(setter.name)} sets the trick</div>
     <div class="card" style="margin-bottom:12px">
       <div style="display:flex;gap:8px;align-items:center">
         <input id="trick-input" placeholder="Trick name (e.g. Kickflip)" value="${currentTrick ? currentTrick.name : ''}" style="flex:1" oninput="logTrick(this.value)">
       </div>
-      ${(state.tricks||[]).length > 0 ? `<div style="margin-top:8px;font-size:.75rem;color:var(--muted)">Recent: ${(state.tricks||[]).slice(-3).map(t=>'R'+t.round+' '+t.name).join(' → ')}</div>` : ''}
+      ${(state.tricks||[]).length > 0 ? `<div style="margin-top:8px;font-size:.75rem;color:var(--muted)">Recent: ${(state.tricks||[]).slice(-3).map(t=>'R'+t.round+' '+escapeHtml(t.name)).join(' → ')}</div>` : ''}
     </div>
     ${state.players.map((p, i) => {
       const isOut = p.letters >= 5;
@@ -388,7 +394,7 @@ function renderGame() {
       <div class="card" style="${isOut ? 'opacity:.4' : ''}">
         <div class="player-row" style="border:none">
           <div>
-            <div class="player-name">${p.name}</div>
+            <div class="player-name">${escapeHtml(p.name)}</div>
             <div class="letters" style="justify-content:flex-start;margin-top:4px">${renderLetters(p.letters)}</div>
           </div>
           <div class="player-actions">
@@ -516,14 +522,14 @@ function renderHistory() {
   el.innerHTML = history.map((h, idx) => `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <strong>🏆 ${h.winner}</strong>
+        <strong>🏆 ${escapeHtml(h.winner)}</strong>
         <span class="history-date">${new Date(h.date).toLocaleDateString()}</span>
       </div>
       <div style="font-size:.85rem;color:var(--muted)">${h.rounds} ${h.rounds === 1 ? 'round' : 'rounds'} • ${h.players.length} players</div>
-      ${(h.tricks||[]).length ? `<div style="margin:8px 0;font-size:.8rem"><strong style="color:var(--accent)">Tricks:</strong> ${h.tricks.map(t=>`<span style="color:var(--muted)">${t.name}${t.setter?' ('+t.setter+')':''}</span>`).join(' → ')}</div>` : ''}
+      ${(h.tricks||[]).length ? `<div style="margin:8px 0;font-size:.8rem"><strong style="color:var(--accent)">Tricks:</strong> ${h.tricks.map(t=>`<span style="color:var(--muted)">${escapeHtml(t.name)}${t.setter?' ('+escapeHtml(t.setter)+')':''}</span>`).join(' → ')}</div>` : ''}
       ${h.players.map(p => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:.85rem">
-          <span>${p.name}</span>
+          <span>${escapeHtml(p.name)}</span>
           <div class="letters">${renderLetters(p.letters)}</div>
         </div>`).join('')}
       <div class="flex-center" style="margin-top:8px">
@@ -552,7 +558,7 @@ function renderStats() {
       ${sorted.map(([name, s]) => `
         <div class="player-row">
           <div>
-            <div class="player-name">${name}</div>
+            <div class="player-name">${escapeHtml(name)}</div>
             <div style="font-size:.8rem;color:var(--muted)">${s.games} ${s.games === 1 ? "game" : "games"} • ${(s.totalLetters/s.games).toFixed(1)} avg letters</div>
           </div>
           <div style="text-align:right">
@@ -666,7 +672,7 @@ function renderTournament() {
   const champ = finalMatch.winner;
   let html = '';
   if (champ) {
-    html += `<div class="card"><div class="tourney-champion">🏆 ${champ} wins the tournament!</div>
+    html += `<div class="card"><div class="tourney-champion">🏆 ${escapeHtml(champ)} wins the tournament!</div>
       <div class="tourney-status">${tournament.players.length} players • ${tournament.bracket.length} rounds</div>
       <div class="flex-center"><button class="sm" onclick="shareTournament()">📤 Share</button><button onclick="tournament=null;saveTourney();renderTournament()">New Tournament</button></div></div>`;
   } else {
@@ -684,8 +690,8 @@ function renderTournament() {
         const isW = match.winner && p && p.name === match.winner;
         const isL = match.winner && p && p.name !== match.winner;
         const cls = isW ? 'winner' : isL ? 'loser' : '';
-        const click = canPick && p ? `onclick="setMatchWinner(${ri},${mi},'${p.name.replace(/'/g,"\\'")}')"` : '';
-        html += `<div class="bracket-slot ${cls}" ${click}><span>${p ? '<span class="seed">#' + p.seed + '</span>' + p.name : '<span style="color:#333">TBD</span>'}</span>${isW ? '<span>✓</span>' : ''}</div>`;
+        const click = canPick && p ? `onclick="setMatchWinner(${ri},${mi},'${escapeHtml(p.name).replace(/'/g,"\\'")}')"` : '';
+        html += `<div class="bracket-slot ${cls}" ${click}><span>${p ? '<span class="seed">#' + p.seed + '</span>' + escapeHtml(p.name) : '<span style="color:#333">TBD</span>'}</span>${isW ? '<span>✓</span>' : ''}</div>`;
       });
       html += '</div>';
     });
