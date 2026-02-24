@@ -25,8 +25,8 @@ button.sm{padding:6px 12px;font-size:.8rem}
 input{background:#222;border:1px solid #333;color:var(--text);border-radius:8px;padding:10px 12px;font-size:.95rem;width:100%}
 input:focus{outline:none;border-color:var(--accent)}
 .letters{display:flex;gap:6px;justify-content:center;margin:8px 0}
-.letter{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;font-size:1.1rem;background:#222;color:#555;transition:all .3s}
-.letter.active{background:var(--accent2);color:#fff}
+.letter{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;font-size:1.1rem;background:transparent;color:#333;border:2px dashed #333;transition:all .3s}
+.letter.active{background:var(--accent2);color:#fff;border:2px solid var(--accent2)}
 .player-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #222}
 .player-row:last-child{border-bottom:none}
 .player-name{font-weight:600;font-size:1rem;flex:1}
@@ -186,11 +186,21 @@ function generateShareCanvas(data) {
     const letterStartX = W - pad - 20 - 5 * 30;
     WORD.split('').forEach((l, i) => {
       const lx = letterStartX + i * 30, ly = y - 14;
-      ctx.fillStyle = i < p.letters ? '#ef4444' : '#222';
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(lx, ly, 26, 26, 6) : ctx.rect(lx, ly, 26, 26);
-      ctx.fill();
-      ctx.fillStyle = i < p.letters ? '#fff' : '#555';
+      if (i < p.letters) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(lx, ly, 26, 26, 6) : ctx.rect(lx, ly, 26, 26);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(lx, ly, 26, 26, 6) : ctx.rect(lx, ly, 26, 26);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle = i < p.letters ? '#fff' : '#333';
       ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(l, lx + 13, ly + 18);
